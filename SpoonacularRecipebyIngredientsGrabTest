@@ -1,0 +1,39 @@
+import requests
+import os
+
+# Fetch your API key from environment variable
+api_key = os.getenv("HAVERTZ_SPOON")
+if not api_key:
+    print("API key is missing! Please set the HAVERTZ_SPOON environment variable.")
+    exit(1)
+
+# Base URL for the Spoonacular API
+url = "https://api.spoonacular.com/recipes/findByIngredients"
+
+# Ingredients to search for
+ingredients = "chicken, rice, onion"
+number_of_recipes = 2
+
+# Parameters to send with the API request
+params = {
+    "apiKey": api_key,      # Your API key
+    "ingredients": ingredients,   # Comma-separated list of ingredients
+    "number": number_of_recipes   # Number of recipes to fetch
+}
+
+# Send the GET request with the parameters
+response = requests.get(url, params=params)
+
+# Check if the response was successful (HTTP Status Code 200)
+if response.status_code == 200:
+    # Parse the JSON response
+    recipes = response.json()
+
+    # If recipes are found, print their titles
+    if recipes:
+        for i, recipe in enumerate(recipes):
+            print(f"{i+1}. {recipe['title']}")
+    else:
+        print("No recipes found for these ingredients.")
+else:
+    print("Error:", response.status_code, response.text)
