@@ -1,38 +1,65 @@
 import requests
 import os
 
-# Fetch your API key from environment variable
-api_key = os.getenv("HAVERTZ_SPOON")
+api_key = ("59042e23954344b39edfa1b0d271b77a")
 if not api_key:
     print("API key is missing! Please set the HAVERTZ_SPOON environment variable.")
     exit(1)
 
-# Base URL for the Spoonacular API
+# Step 1: Search by ingredients
 url = "https://api.spoonacular.com/recipes/findByIngredients"
-
-# Ingredients to search for
 ingredients = "chicken, rice, onion"
 number_of_recipes = 2
 
-# Parameters to send with the API request
 params = {
-    "apiKey": api_key,      # Your API key
-    "ingredients": ingredients,   # Comma-separated list of ingredients
-    "number": number_of_recipes   # Number of recipes to fetch
+    "apiKey": api_key,
+    "ingredients": ingredients,
+    "number": number_of_recipes
 }
 
-# Send the GET request with the parameters
 response = requests.get(url, params=params)
 
-# Check if the response was successful (HTTP Status Code 200)
 if response.status_code == 200:
-    # Parse the JSON response
     recipes = response.json()
 
-    # If recipes are found, print their titles
     if recipes:
         for i, recipe in enumerate(recipes):
-            print(f"{i+1}. {recipe['title']}")
+            print(f"\n{i+1}. {recipe['title']} (ID: {recipe['id']})")
+
+            # Step 2: Get recipe information
+            recipe_id = recipe["id"]
+            info_url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
+            info_params = {
+                "apiKey": api_key
+            }
+
+            info_response = requests.get(info_url, params=info_params)
+            if info_response.status_code == 200:
+                info_data = info_response.json()
+                print(f"   Ready in {info_data['readyInMinutes']} minutes")
+                print(f"   Servings: {info_data['servings']}")
+                print(f"   Source: {info_data['sourceUrl']}")
+            else:
+                print("   Failed to fetch recipe info.")
+
+            # Step 3: Get analyzed instructions
+            instructions_url = f"https://api.spoonacular.com/recipes/{recipe_id}/analyzedInstructions"
+            instructions_params = {
+                "apiKey": api_key
+            }
+
+            instructions_response = requests.get(instructions_url, params=instructions_params)
+            if instructions_response.status_code == 200:
+                instructions_data = instructions_response.json()
+                if instructions_data:
+                    steps = instructions_data[0]['steps']
+                    print("   Steps:")
+                    for step in steps:
+                        print(f"     {step['number']}. {step['step']}")
+                else:
+                    print("   No instructions available.")
+            else:
+                print("   Failed to fetch instructions.")
     else:
         print("No recipes found for these ingredients.")
 else:
