@@ -1,116 +1,126 @@
 import streamlit as st
 import google.generativeai as genai
 import requests
-import os
 
-# Configure Gemini with your API key
-genai.configure(api_key="AIzaSyAFPVwBrBCA4hlmtUrrGYS9POeLKHqQR6Q")  # Replace with your actual Google Gemini API key
+# ✅ Set page config
+st.set_page_config(page_title="🍴 Recipe Arsenal", page_icon="🍴", layout="centered")
 
-# Use the correct model (replace with your actual model name)
+# ✅ Custom Styles
+st.markdown("""
+    <style>
+        /* Hide default Streamlit UI */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+
+        /* Apply deep red background color for everything */
+        body, .main, .block-container {
+            background-color: #660000 !important; /* Deep red for the outer background */
+        }
+
+        /* Inner content (keeping the same background color for the content area) */
+        .block-container {
+            background-color: #2C2C2C !important; /* Grayish-black for the content area */
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        /* Persistent Top Bar */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background-color: #9A1111;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            z-index: 1000;
+            font-size: 20px;
+            font-weight: bold;
+            border-bottom: 1px solid #444;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            text-shadow: -1px 0 #000, 0 1px #000, 1px 0 #000, 0 -1px #000;
+        }
+
+        .spacer {
+            margin-top: 60px;
+        }
+    </style>
+
+    <div class="top-bar">🍴 Recipe Arsenal</div>
+    <div class="spacer"></div>
+""", unsafe_allow_html=True)
+
+# ✅ Configure Gemini
+genai.configure(api_key="AIzaSyAFPVwBrBCA4hlmtUrrGYS9POeLKHqQR6Q")
 model = genai.GenerativeModel("gemini-1.5-pro-latest")
 
-# Spoonacular API key (replace with your actual Spoonacular API key)
-api_key = "59042e23954344b39edfa1b0d271b77a"  # Replace with your actual Spoonacular API key
+# ✅ Spoonacular API Key
+api_key = "59042e23954344b39edfa1b0d271b77a"
 
-# Function to fetch recipes from Spoonacular based on ingredients
+# ✅ Functions
 def fetch_recipes_from_spoonacular(ingredients):
     url = "https://api.spoonacular.com/recipes/findByIngredients"
-    params = {
-        "apiKey": api_key,
-        "ingredients": ingredients,  # Comma-separated list of ingredients
-        "number": 5  # You can adjust the number of recipes to fetch
-    }
+    params = {"apiKey": api_key, "ingredients": ingredients, "number": 5}
     response = requests.get(url, params=params)
-    
-    if response.status_code == 200:
-        recipes = response.json()
-        return recipes
-    else:
-        st.error(f"Error fetching recipes: {response.status_code} - {response.text}")
-        return []
+    return response.json() if response.status_code == 200 else []
 
-# Function to fetch detailed recipe information (including instructions)
 def fetch_recipe_details(recipe_id):
-    info_url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
-    info_params = {
-        "apiKey": api_key
-    }
-
-    info_response = requests.get(info_url, params=info_params)
-    if info_response.status_code == 200:
-        info_data = info_response.json()
-        ready_in_minutes = info_data['readyInMinutes']
-        servings = info_data['servings']
-        source_url = info_data['sourceUrl']
+    url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
+    response = requests.get(url, params={"apiKey": api_key})
+    if response.status_code == 200:
+        data = response.json()
+        ready_in_minutes = data.get('readyInMinutes')
+        if not ready_in_minutes:
+            ready_in_minutes = "N/A"  # Fallback if the field is missing
+        servings = data.get('servings', "N/A")
+        source_url = data.get('sourceUrl', "#")
         return ready_in_minutes, servings, source_url
-    else:
-        return None, None, None
+    return "N/A", "N/A", "#"
 
 def fetch_instructions(recipe_id):
-    instructions_url = f"https://api.spoonacular.com/recipes/{recipe_id}/analyzedInstructions"
-    instructions_params = {
-        "apiKey": api_key
-    }
-
-    instructions_response = requests.get(instructions_url, params=instructions_params)
-    if instructions_response.status_code == 200:
-        instructions_data = instructions_response.json()
-        if instructions_data:
-            steps = instructions_data[0]['steps']
-            return steps
+    url = f"https://api.spoonacular.com/recipes/{recipe_id}/analyzedInstructions"
+    response = requests.get(url, params={"apiKey": api_key})
+    if response.status_code == 200 and response.json():
+        return response.json()[0]['steps']
     return None
 
-# Streamlit App
-st.title("Recipe Arsenal")
-
-# Display three images side by side using columns
+# ✅ Top images
 col1, col2, col3 = st.columns(3)
-
 with col2:
-    st.image("https://i.imgur.com/J1Lbcq4.png", caption="Up the Gunners!")
-
+    st.image("https://i.imgur.com/J1Lbcq4.png")
 with col1:
     st.image("https://i.imgur.com/qbTCA4D.png", caption="Chef Havertz")
-
 with col3:
     st.image("https://i.imgur.com/Em196xX.png", caption="Chef White")
 
-# User name input
-name = st.text_input("What's your name?")
-if name:
-    st.write(f"Hello, {name}!")
-
-# Ingredients input
+# ✅ User inputs
 ingredients = st.text_input("Enter ingredients (comma-separated):", placeholder="e.g. chicken, rice, spinach")
-
-# User preference input for the recipe (e.g., healthy, high-protein, etc.)
 recipe_preference = st.text_input("Any recipe preferences? (e.g., healthy, high-protein, etc.)", placeholder="e.g., healthy")
 
-# Button to generate recipe
+# ✅ Generate Recipe
 if st.button("Generate Recipe"):
     if not ingredients:
         st.warning("Please enter some ingredients first.")
     else:
         st.write(f"Searching for recipes using: {ingredients}")
-
-        # Fetch recipes from Spoonacular
         recipes = fetch_recipes_from_spoonacular(ingredients)
 
         if recipes:
-            # Display the recipe titles from Spoonacular with dropdowns for details
             st.write("### Found Recipes:")
-            for i, recipe in enumerate(recipes):
-                recipe_title = recipe['title']
+            for recipe in recipes:
+                title = recipe['title']
                 recipe_id = recipe['id']
 
-                with st.expander(f"{recipe_title} (ID: {recipe_id})"):
-                    # Display detailed information for each recipe
+                with st.expander(f"{title} (ID: {recipe_id})"):
                     ready_in_minutes, servings, source_url = fetch_recipe_details(recipe_id)
-                    if ready_in_minutes:
-                        st.write(f"**Ready in**: {ready_in_minutes} minutes")
-                        st.write(f"**Servings**: {servings}")
-                        st.write(f"[**Source**]({source_url})")
-                    
+                    st.write(f"**Ready in**: {ready_in_minutes} minutes")
+                    st.write(f"**Servings**: {servings}")
+                    st.write(f"[**Source**]({source_url})")
+
                     steps = fetch_instructions(recipe_id)
                     if steps:
                         st.write("### Instructions:")
@@ -118,18 +128,14 @@ if st.button("Generate Recipe"):
                             st.write(f"{step['number']}. {step['step']}")
                     else:
                         st.write("No instructions available.")
-                    
-            # Prompt to refine recipe selection with Gemini based on user preference
+
             if recipe_preference:
                 st.write(f"Refining recipe choice based on preference: '{recipe_preference}'")
-
-                # Generate a prompt for Gemini to refine the recipe selection
-                prompt = f"""Given the list of recipes: {', '.join([recipe['title'] for recipe in recipes])},
-                             select the best recipe that meets the following criteria: {recipe_preference}.
-                             Provide the title of the best recipe and explain why it fits the preference."""
-
-                # Use Gemini to filter and refine recipes
                 try:
+                    titles = ', '.join([recipe['title'] for recipe in recipes])
+                    prompt = f"""Given the list of recipes: {titles},
+                                 select the best recipe that meets the following criteria: {recipe_preference}.
+                                 Provide the title of the best recipe and explain why it fits the preference."""
                     response = model.generate_content(prompt)
                     st.markdown("### Refined Recipe Recommendation:")
                     st.markdown(response.text)
